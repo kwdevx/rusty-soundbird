@@ -1,0 +1,12 @@
+services:
+  server:
+    container_name: "rust-dc-bot"
+    build:
+      context: .
+      dockerfile: "./Dockerfile.dev"
+    # env_file:
+    #   - .env.development.local
+    # ports:
+    #   - 8081:8081 
+    volumes:
+      - ./:/app

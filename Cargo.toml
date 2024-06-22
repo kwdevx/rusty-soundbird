@@ -6,3 +6,10 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+dotenv = "0.15.0"
+envy = "0.4.2"
+poise = "0.6.1"
+serde = { version = "1.0.203", features = ["derive"] }
+serenity = { version = "0.12.2",  default-features = false, features = ["client", "gateway", "rustls_backend", "model"] }
+tokio = { version = "1.21.2", features = ["macros", "rt-multi-thread"] }
+rand = "0.8.5"
