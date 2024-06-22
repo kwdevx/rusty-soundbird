@@ -1,4 +1,4 @@
-use crate::{commands::help, Context, Error};
+use crate::{Context, Error};
 use rand::Rng;
 
 const FRUIT: &[&str] = &["🍎", "🍌", "🍊", "🍉", "🍇", "🍓"];
@@ -9,7 +9,7 @@ const FRUIT: &[&str] = &["🍎", "🍌", "🍊", "🍉", "🍇", "🍓"];
 #[poise::command(
     slash_command,
     prefix_command,
-    subcommands("apple", "help"),
+    subcommands("apple"),
     category = "Vegan"
 )]
 pub async fn fruit(ctx: Context<'_>) -> Result<(), Error> {
@@ -18,7 +18,7 @@ pub async fn fruit(ctx: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
 /// Respond with an apple
-#[poise::command(slash_command, prefix_command, subcommands("red"))]
+#[poise::command(slash_command, prefix_command, subcommands("red", "green"))]
 pub async fn apple(ctx: Context<'_>) -> Result<(), Error> {
     ctx.say("🍎").await?;
     Ok(())
@@ -28,5 +28,12 @@ pub async fn apple(ctx: Context<'_>) -> Result<(), Error> {
 #[poise::command(slash_command, prefix_command)]
 async fn red(ctx: Context<'_>) -> Result<(), Error> {
     ctx.say("🍎").await?;
+    Ok(())
+}
+
+/// Respond with a green apple
+#[poise::command(slash_command, prefix_command)]
+async fn green(ctx: Context<'_>) -> Result<(), Error> {
+    ctx.say("🍏").await?;
     Ok(())
 }

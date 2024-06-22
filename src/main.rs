@@ -5,6 +5,12 @@ use configs::env::Config;
 use dotenv::dotenv;
 use poise::serenity_prelude as serenity;
 
+use songbird::typemap::TypeMapKey;
+use songbird::SerenityInit;
+
+// YtDl requests need an HTTP client to operate -- we'll create and store our own.
+use reqwest::Client as HttpClient;
+
 use std::{sync::Arc, time::Duration};
 
 // Types used by all command functions
@@ -14,6 +20,11 @@ type Context<'a> = poise::Context<'a, Data, Error>;
 // Custom user data passed to all command functions
 pub struct Data {
     // votes: Mutex<HashMap<String, u32>>,
+}
+
+struct HttpKey;
+impl TypeMapKey for HttpKey {
+    type Value = HttpClient;
 }
 
 async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
@@ -47,7 +58,7 @@ async fn main() {
     };
 
     let options = poise::FrameworkOptions {
-        commands: vec![commands::help(), commands::fruit()],
+        commands: commands::create_command(),
         prefix_options: poise::PrefixFrameworkOptions {
             prefix: Some("~".into()),
             edit_tracker: Some(Arc::new(poise::EditTracker::for_timespan(
@@ -113,6 +124,13 @@ async fn main() {
         .build();
 
     let client = serenity::ClientBuilder::new(&env.discord_token, intents)
+        .register_songbird()
+        // We insert our own HTTP client here to make use of in
+        // `~play`. If we wanted, we could supply cookies and auth
+        // details ahead of time.
+        //
+        // Generally, we don't want to make a new Client for every request!
+        .type_map_insert::<HttpKey>(HttpClient::new())
         .framework(framework)
         .await;
 

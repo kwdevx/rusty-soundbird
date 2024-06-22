@@ -1,12 +1,19 @@
 # 1. This tells docker to use the Rust official image
-FROM rust:1.79.0-slim-buster
+FROM rust:1.79.0
+
+# install cmake 
+RUN apt update
+RUN apt -y install cmake
+RUN apt -y install yt-dlp 
+RUN apt -y install libopus-dev
+
+# install cargo-watch
+RUN cargo install cargo-watch
 
 WORKDIR /app
 
 # 2. Copy the files in your machine to the Docker image
 COPY ./ ./
-
-RUN cargo install cargo-watch
 
 # Build your program for release
 # RUN cargo build --release
