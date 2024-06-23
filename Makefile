@@ -1,5 +1,5 @@
 -include .env
-LOCAL_IMAGE="rs-bot:latest"
+LOCAL_IMAGE="rusty-music-bot:latest"
 	
 .PHONY: dev
 dev:
