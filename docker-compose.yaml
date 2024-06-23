@@ -1,6 +1,6 @@
 services:
   server:
-    container_name: "rust-dc-bot"
+    container_name: "rust-dc-bot-dev"
     build:
       context: .
       dockerfile: "./Dockerfile.dev"

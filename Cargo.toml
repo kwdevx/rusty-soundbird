@@ -1,5 +1,5 @@
 [package]
-name = "crabby-dc-music-bot"
+name = "rs-bot"
 version = "0.1.0"
 edition = "2021"
 
@@ -12,7 +12,7 @@ poise = "0.6.1"
 serde = { version = "1.0.203", features = ["derive"] }
 # serenity = { version = "0.12.2",  default-features = false, features = ["client", "gateway", "rustls_backend", "model"] }
 tokio = { version = "1.21.2", features = ["macros", "rt-multi-thread"] }
-rand = "0.8.5"
+# rand = "0.8.5"
 songbird = "0.4.1"
 reqwest = { version = "0.11.5" }
 symphonia = {version = "0.5.4", features = ["aac","mp3","alac"]}

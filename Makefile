@@ -1,8 +1,8 @@
 -include .env
-LOCAL_IMAGE="rust-dc-bot:latest"
+LOCAL_IMAGE="rs-bot:latest"
 	
-.PHONY: run 
-run:
+.PHONY: dev
+dev:
 	@echo "[I] Start application in development env"
 	docker compose up
 	
@@ -15,12 +15,12 @@ run:
 # 	aws ecr get-login-password --region ${CLOUD_REGION} | docker login --username AWS --password-stdin ${IMAGE_REGISTRY}
 # 	@echo "[I] Login to ${IMAGE_REGISTRY} sucess"
 #
-# .PHONY: build
-# build:
-# 	@echo "[I] Start building application"
-# 	docker build . -t ${LOCAL_IMAGE}
-# 	@echo "[I] Build success"
-#
+.PHONY: build
+build:
+	@echo "[I] Start building application"
+	docker build . -t ${LOCAL_IMAGE}
+	@echo "[I] Build success"
+
 # .PHONY: retag
 # retag:
 # 	@echo "[I]  Tagging built image"
