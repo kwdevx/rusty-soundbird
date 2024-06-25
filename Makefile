@@ -5,8 +5,8 @@ dev:
 	@echo "[I] Start application in development env"
 	docker compose up
 	
-.PHONY: all
-all: login build retag push
+.PHONY: deploy
+deploy: login build retag push
 
 .PHONY: login
 login:
