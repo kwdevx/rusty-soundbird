@@ -1,5 +1,5 @@
 # 1. This tells docker to use the Rust official image
-FROM rust:1.79.0 as builder
+FROM --platform=linux/amd64 rust:1.79.0 as builder
 WORKDIR /usr/src/myapp
 
 # 2. Copy the files in your machine to the Docker image
@@ -12,7 +12,7 @@ RUN apt update && apt -y install cmake
 RUN cargo install --path . 
 
 # Prod stage, bookworm include libssl.so.3
-FROM debian:bookworm-slim as runner
+FROM --platform=linux/amd64 debian:bookworm-slim as runner
 ARG DISCORD_TOKEN
 ENV DISCORD_TOKEN=${DISCORD_TOKEN}
 
