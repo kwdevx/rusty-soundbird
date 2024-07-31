@@ -5,4 +5,4 @@
 - [ ] query song from adapters
 
 ## Deployment
-Currently deploy to lightsail container service which only support *--platform=linux/amd64* image for now
+Currently deploy to lightsail container service which only support `--platform=linux/amd64` image for now

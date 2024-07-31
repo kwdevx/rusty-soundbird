@@ -4,12 +4,11 @@ pub mod player;
 
 use help::help;
 use ping::ping;
-use player::join;
-use player::play;
+use player::{join::join, play::play, query::query, queue::queue};
 
 use crate::Error;
 use poise::Command;
 
 pub fn create_command() -> Vec<Command<crate::Data, Error>> {
-    vec![help(), ping(),  join(), play()]
+    vec![help(), ping(), join(), play(), query(), queue()]
 }

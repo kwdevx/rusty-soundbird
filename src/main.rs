@@ -1,5 +1,6 @@
 mod commands;
 mod configs;
+mod models;
 
 use configs::env::Config;
 use dotenv::dotenv;
