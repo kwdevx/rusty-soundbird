@@ -2,9 +2,11 @@
 FROM rust:1.79.0
 
 # install cmake 
+# RUN add-apt-repository ppa:tomtomtom/yt-dlp
 RUN apt update
 RUN apt -y install cmake
-RUN apt -y install yt-dlp 
+# RUN apt -y install yt-dlp
+RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp && chmod a+rx /usr/local/bin/yt-dlp
 RUN apt -y install libopus-dev
 
 # install cargo-watch

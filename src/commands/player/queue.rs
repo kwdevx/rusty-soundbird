@@ -34,6 +34,10 @@ pub async fn queue(
             let mut handler = handler_lock.lock().await;
 
             let src = YoutubeDl::new(http_client, url);
+
+            let q_len = handler.queue().len();
+            println!("current queue length {}", q_len);
+
             handler.enqueue_input(src.into()).await;
 
             ctx.reply("Queued song").await?;

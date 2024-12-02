@@ -70,8 +70,12 @@ async fn handle_play_song(
             } else {
                 YoutubeDl::new(http_client, url)
             };
+            // let _ = handler.play_input(src.clone().into());
 
-            let _ = handler.play_input(src.clone().into());
+            handler.enqueue_input(src.into()).await;
+
+            let q_len = handler.queue().len();
+            println!("current queue length {}", q_len);
 
             ctx.reply("Playing song").await?;
         }
