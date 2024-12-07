@@ -2,10 +2,7 @@ use std::collections::HashMap;
 
 use crate::{Context, Error};
 use poise::serenity_prelude::{async_trait, UserId, VoiceState};
-use songbird::{
-    events::{Event, EventContext, EventHandler as VoiceEventHandler},
-    TrackEvent,
-};
+use songbird::events::{Event, EventContext, EventHandler as VoiceEventHandler};
 
 struct TrackErrorNotifier;
 

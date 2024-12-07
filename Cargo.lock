@@ -1695,6 +1695,7 @@ dependencies = [
  "serde_json",
  "songbird",
  "symphonia",
+ "symphonia-core",
  "tokio",
 ]
 

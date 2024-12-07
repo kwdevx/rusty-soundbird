@@ -1,12 +1,17 @@
 # 1. This tells docker to use the Rust official image
-FROM rust:1.79.0
+FROM --platform=linux/amd64 rust:1.83-bullseye as builder
 
 # install cmake 
 # RUN add-apt-repository ppa:tomtomtom/yt-dlp
 RUN apt update
+# RUN apt -y install python3
+# RUN python3 -m pip install --upgrade pip
 RUN apt -y install cmake
 # RUN apt -y install yt-dlp
 RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp && chmod a+rx /usr/local/bin/yt-dlp
+# RUN pip3 install spotdl
+RUN curl -L https://github.com/spotDL/spotify-downloader/releases/download/v4.2.10/spotdl-4.2.10-linux -o /usr/local/bin/spotdl && chmod a+rx /usr/local/bin/spotdl
+
 RUN apt -y install libopus-dev
 
 # install cargo-watch

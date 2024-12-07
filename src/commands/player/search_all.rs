@@ -1,21 +1,22 @@
-use crate::{Context, Error, HttpKey};
-use songbird::input::YoutubeDl;
+use songbird::input::Input;
+
+use crate::{input::spotdl::SpotifyDl, Context, Error, HttpKey};
 
 use super::join::handle_join;
 
 #[poise::command(prefix_command, track_edits, slash_command)]
-pub async fn play(
+pub async fn search_all(
     ctx: Context<'_>,
     #[description = "Url to the song"] url: String,
 ) -> Result<(), Error> {
     ctx.defer().await?;
 
-    handle_play_song(ctx, url, 0, 2).await?;
+    handle_search_all_song(ctx, url, 0, 2).await?;
 
     Ok(())
 }
 
-async fn handle_play_song(
+async fn handle_search_all_song(
     ctx: Context<'_>,
     url: String,
     trial_time: i8,
@@ -26,8 +27,6 @@ async fn handle_play_song(
             .await?;
         return Ok(());
     }
-
-    let do_search = !url.starts_with("http");
     let ser_ctx = ctx.serenity_context();
     let guild_id = ctx.guild_id().expect("have guild_id");
 
@@ -38,24 +37,6 @@ async fn handle_play_song(
             .expect("Guaranteed to exist in the typemap.")
     };
 
-    if do_search {
-        println!("searching...");
-        let search_res = YoutubeDl::new_search(http_client.clone(), url.clone())
-            .search(Some(5))
-            .await?;
-
-        println!("search res length {}", search_res.len());
-
-        for res in search_res {
-            match res.title {
-                Some(title) => {
-                    println!("title:{title}");
-                }
-                _ => {}
-            }
-        }
-    }
-
     let manager = songbird::get(ser_ctx)
         .await
         .expect("Songbird Voice client placed in at initialisation.")
@@ -65,12 +46,16 @@ async fn handle_play_song(
         Some(handler_lock) => {
             let mut handler = handler_lock.lock().await;
 
-            let src = if do_search {
-                YoutubeDl::new_search(http_client, url)
+            let src = SpotifyDl::new(http_client, url);
+
+            let mut output: Input = src.clone().into();
+            let raw_metadata = output.aux_metadata().await?;
+
+            if let Some(metadata) = raw_metadata.source_url {
+                println!("metadata {:?}", metadata);
             } else {
-                YoutubeDl::new(http_client, url)
-            };
-            // let _ = handler.play_input(src.clone().into());
+                println!("metadata is none");
+            }
 
             handler.enqueue_input(src.into()).await;
 
@@ -83,7 +68,12 @@ async fn handle_play_song(
             ctx.reply("Not in a voice channel to play in, joining...")
                 .await?;
             if let Ok(_) = handle_join(ctx).await {
-                let future = Box::pin(handle_play_song(ctx, url, trial_time + 1, max_trial_time));
+                let future = Box::pin(handle_search_all_song(
+                    ctx,
+                    url,
+                    trial_time + 1,
+                    max_trial_time,
+                ));
                 future.await?;
             }
         }

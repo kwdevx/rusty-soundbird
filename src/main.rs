@@ -1,5 +1,6 @@
 mod commands;
 mod configs;
+mod input;
 mod models;
 
 use configs::env::Config;
