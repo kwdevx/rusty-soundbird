@@ -31,7 +31,6 @@ RUN apt -y install libopus-dev
 RUN rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /usr/local/cargo/bin/rusty-music-bot /usr/local/bin/rusty-music-bot
-COPY --from=builder /app/cookie.txt /cookie.txt
 
 # Run the binary
 CMD ["rusty-music-bot"]
