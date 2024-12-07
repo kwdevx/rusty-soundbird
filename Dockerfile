@@ -1,5 +1,5 @@
 # 1. This tells docker to use the Rust official image
-FROM --platform=linux/amd64 rust:1.83-bullseye as builder
+FROM --platform=linux/amd64 rust:1.79 as builder
 WORKDIR /app
 
 # 2. Copy the files in your machine to the Docker image
@@ -17,6 +17,11 @@ WORKDIR /app
 
 ARG DISCORD_TOKEN
 ENV DISCORD_TOKEN=${DISCORD_TOKEN}
+
+ARG SPOTIFY_CLIENT_ID
+ENV SPOTIFY_CLIENT_ID=${SPOTIFY_CLIENT_ID}
+ARG SPOTIFY_CLIENT_SECRET
+ENV SPOTIFY_CLIENT_SECRET=${SPOTIFY_CLIENT_SECRET}
 
 # py3 38.3MB, pip 370.88MB, ytdlp 14.5MB
 RUN apt update && apt -y install python3 curl
