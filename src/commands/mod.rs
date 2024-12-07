@@ -4,7 +4,9 @@ pub mod player;
 
 use help::help;
 use ping::ping;
-use player::{join::join, play::play, query::query, queue::queue, search_all::search_all};
+use player::{
+    join::join, query::query, queue::queue, skip::skip, spotify::spotify, stop::stop, yt::yt,
+};
 
 use crate::Error;
 use poise::Command;
@@ -14,9 +16,11 @@ pub fn create_command() -> Vec<Command<crate::Data, Error>> {
         help(),
         ping(),
         join(),
-        play(),
-        search_all(),
+        yt(),
+        spotify(),
         query(),
         queue(),
+        skip(),
+        stop(),
     ]
 }

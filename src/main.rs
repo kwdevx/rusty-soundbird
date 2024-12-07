@@ -21,6 +21,7 @@ type Context<'a> = poise::Context<'a, Data, Error>;
 
 // Custom user data passed to all command functions
 pub struct Data {
+    app_config: Config,
     // votes: Mutex<HashMap<String, u32>>,
 }
 
@@ -53,7 +54,7 @@ async fn main() {
 
     let env = match envy::from_env::<Config>() {
         Ok(config) => {
-            println!("init config ok {config:?}");
+            println!("init config ok");
             config
         }
         Err(err) => panic!("failed to init config {err:?}"),
@@ -100,6 +101,8 @@ async fn main() {
         skip_checks_for_owners: false,
         event_handler: |_ctx, event, _framework, _data| {
             Box::pin(async move {
+                // todo!: handle events sent by discord
+                // mainly for all users leaving the voice channel, bot should stop all process to save resources
                 println!(
                     "Got an event in event handler: {:?}",
                     event.snake_case_name()
@@ -112,12 +115,14 @@ async fn main() {
 
     let intents = serenity::GatewayIntents::non_privileged();
 
+    let env_clone = env.clone();
     let framework = poise::Framework::builder()
-        .setup(move |ctx, _ready, framework| {
+        .setup(|ctx, _ready, framework| {
             Box::pin(async move {
                 println!("Logged in as {}", _ready.user.name);
                 poise::builtins::register_globally(ctx, &framework.options().commands).await?;
                 Ok(Data {
+                    app_config: env_clone,
                     // votes: Mutex::new(HashMap::new()),
                 })
             })

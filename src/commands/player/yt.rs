@@ -4,18 +4,18 @@ use songbird::input::YoutubeDl;
 use super::join::handle_join;
 
 #[poise::command(prefix_command, track_edits, slash_command)]
-pub async fn play(
+pub async fn yt(
     ctx: Context<'_>,
     #[description = "Url to the song"] url: String,
 ) -> Result<(), Error> {
     ctx.defer().await?;
 
-    handle_play_song(ctx, url, 0, 2).await?;
+    handle_play_yt(ctx, url, 0, 2).await?;
 
     Ok(())
 }
 
-async fn handle_play_song(
+async fn handle_play_yt(
     ctx: Context<'_>,
     url: String,
     trial_time: i8,
@@ -83,7 +83,7 @@ async fn handle_play_song(
             ctx.reply("Not in a voice channel to play in, joining...")
                 .await?;
             if let Ok(_) = handle_join(ctx).await {
-                let future = Box::pin(handle_play_song(ctx, url, trial_time + 1, max_trial_time));
+                let future = Box::pin(handle_play_yt(ctx, url, trial_time + 1, max_trial_time));
                 future.await?;
             }
         }
