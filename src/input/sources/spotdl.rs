@@ -4,13 +4,16 @@ use reqwest::{
     Client,
 };
 use songbird::input::{AudioStream, AudioStreamError, AuxMetadata, Compose, HttpRequest, Input};
-use std::{error::Error, io::ErrorKind};
+use std::{error::Error, io::ErrorKind, sync::Arc};
 use symphonia_core::io::MediaSource;
 use tokio::process::Command;
 
 use crate::input::metadata::spotdl::Output;
 
 const SPOTIFY_DL_COMMAND: &str = "spotdl";
+const SPOTIFY_DL_OPTION_URL: &str = "url";
+const SPOTIFY_DL_OPTION_SPOTIFY_CLIENT_ID_FLAG: &str = "--client-id";
+const SPOTIFY_DL_OPTION_SPOTIFY_CLIENT_SECRET_FLAG: &str = "--client-secret";
 
 #[derive(Clone, Debug)]
 enum QueryType {
@@ -35,8 +38,8 @@ pub struct SpotifyDl {
 
 #[derive(Debug, Clone)]
 pub struct SpotifyCredential {
-    pub client_id: String,
-    pub client_secret: String,
+    pub client_id: Arc<String>,
+    pub client_secret: Arc<String>,
 }
 
 impl SpotifyDl {
@@ -72,16 +75,16 @@ impl SpotifyDl {
         let query_str = match &self.query {
             QueryType::UrlOrSearch(url) => url,
         };
-        let spotdl_args: Vec<String> = match &self.credentials {
+        let spotdl_args: Vec<&str> = match &self.credentials {
             Some(credentials) => vec![
-                "url".to_string(),
-                query_str.to_string(),
-                "--client-id".to_string(),
-                credentials.client_id.clone(),
-                "--client-secret".to_string(),
-                credentials.client_secret.clone(),
+                SPOTIFY_DL_OPTION_URL,
+                query_str,
+                SPOTIFY_DL_OPTION_SPOTIFY_CLIENT_ID_FLAG,
+                credentials.client_id.as_ref(),
+                SPOTIFY_DL_OPTION_SPOTIFY_CLIENT_SECRET_FLAG,
+                credentials.client_secret.as_ref(),
             ],
-            None => vec!["url".to_string(), query_str.to_string()],
+            None => vec![SPOTIFY_DL_OPTION_URL, query_str],
         };
 
         let output = Command::new(self.program)

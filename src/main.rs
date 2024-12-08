@@ -130,7 +130,7 @@ async fn main() {
         .options(options)
         .build();
 
-    let client = serenity::ClientBuilder::new(&env.discord_token, intents)
+    let client = serenity::ClientBuilder::new(env.discord_token.as_ref(), intents)
         .register_songbird()
         // We insert our own HTTP client here to make use of in
         // `~play`. If we wanted, we could supply cookies and auth
