@@ -1,5 +1,5 @@
 # 1. This tells docker to use the Rust official image
-FROM rust:1.79.0
+FROM rust:1.81.0
 
 # install cmake 
 RUN apt update
@@ -8,7 +8,8 @@ RUN apt -y install cmake
 # runtime dep, yt-dlp, spotdl, ffmpeg
 RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp && chmod a+rx /usr/local/bin/yt-dlp
 RUN curl -L https://github.com/spotDL/spotify-downloader/releases/download/v4.2.10/spotdl-4.2.10-linux -o /usr/local/bin/spotdl && chmod a+rx /usr/local/bin/spotdl
-RUN spotdl --download-ffmpeg
+RUN apt -y install ffmpeg
+# RUN spotdl --download-ffmpeg
 
 RUN apt -y install libopus-dev
 
