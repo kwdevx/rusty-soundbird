@@ -1,3 +1,4 @@
+use songbird::input::Compose;
 use crate::{
     input::sources::spotdl::{SpotifyCredential, SpotifyDl},
     Context, Error, HttpKey,
