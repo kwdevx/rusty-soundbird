@@ -1,3 +1,4 @@
+use std::error::Error;
 use serde::{Deserialize, Serialize};
 use tokio::fs::File;
 use tokio::io::AsyncReadExt;
@@ -45,7 +46,7 @@ pub struct Song {
 
 impl Song {
     // Read songs from a JSON file
-    pub async fn from_file(path: &str) -> anyhow::Result<Vec<Song>> {
+    pub async fn from_file(path: &str) -> Result<Vec<Song>, Box<dyn Error + Send + Sync>> {
         let file = File::open(path).await;
         match file {
             Ok(mut file) => {
@@ -58,7 +59,7 @@ impl Song {
             Err(e) => {
                 println!("{}", format!("error: {}", e));
                 println!("Error reading file");
-                Ok(vec![])
+                Err(e.into())
             }
         }
     }

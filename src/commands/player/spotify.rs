@@ -76,7 +76,6 @@ async fn handle_play_spotify(
             println!("current queue length {}", q_len);
 
             // handle metadata for spotify adaptor
-            ctx.reply("Playing song").await?;
             ctx.send(reply).await?;
         }
         _ => {

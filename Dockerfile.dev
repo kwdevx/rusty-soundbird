@@ -22,4 +22,4 @@ WORKDIR /app
 COPY ./ ./
 
 # Run the binary
-CMD ["cargo", "watch", "-x", "run"]
+CMD ["cargo", "watch", "-w", "src", "-x", "run"]
