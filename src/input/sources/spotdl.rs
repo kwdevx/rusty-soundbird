@@ -1,16 +1,31 @@
+#[allow(dead_code)]
+use crate::input::metadata::spotdl::Output;
+use crate::models::metadata::spotdl::Song;
+use anyhow::Result;
+use core::option::Option;
 use poise::serenity_prelude::async_trait;
 use reqwest::{
     header::{HeaderMap, HeaderName, HeaderValue},
     Client,
 };
 use songbird::input::{AudioStream, AudioStreamError, AuxMetadata, Compose, HttpRequest, Input};
-use std::{error::Error, io::ErrorKind};
+use std::{error::Error, io::ErrorKind, sync::Arc};
 use symphonia_core::io::MediaSource;
 use tokio::process::Command;
 
-use crate::input::metadata::spotdl::Output;
-
 const SPOTIFY_DL_COMMAND: &str = "spotdl";
+
+// for getting download url from spotdl
+const SPOTIFY_DL_OPTION_URL: &str = "url";
+
+// for getting metadata from spotdl
+const SPOTIFY_DL_OPTION_SAVE: &str = "save";
+const SPOTIFY_DL_OPTION_SAVE_SAVE_FILE_FLAG: &str = "--save-file";
+
+const SPOTIFY_DL_FILE_NAME: &str = "temp.spotdl";
+
+const SPOTIFY_DL_OPTION_SPOTIFY_CLIENT_ID_FLAG: &str = "--client-id";
+const SPOTIFY_DL_OPTION_SPOTIFY_CLIENT_SECRET_FLAG: &str = "--client-secret";
 
 #[derive(Clone, Debug)]
 enum QueryType {
@@ -35,8 +50,8 @@ pub struct SpotifyDl {
 
 #[derive(Debug, Clone)]
 pub struct SpotifyCredential {
-    pub client_id: String,
-    pub client_secret: String,
+    pub client_id: Arc<String>,
+    pub client_secret: Arc<String>,
 }
 
 impl SpotifyDl {
@@ -53,7 +68,7 @@ impl SpotifyDl {
     ///
     /// [`new`]: Self::new
     #[must_use]
-    pub fn new_spotdl_like(
+    fn new_spotdl_like(
         program: &'static str,
         client: Client,
         url: String,
@@ -72,20 +87,67 @@ impl SpotifyDl {
         let query_str = match &self.query {
             QueryType::UrlOrSearch(url) => url,
         };
-        let spotdl_args: Vec<String> = match &self.credentials {
-            Some(credentials) => vec![
-                "url".to_string(),
-                query_str.to_string(),
-                "--client-id".to_string(),
-                credentials.client_id.clone(),
-                "--client-secret".to_string(),
-                credentials.client_secret.clone(),
-            ],
-            None => vec!["url".to_string(), query_str.to_string()],
-        };
+        let url = self.process_url_command(query_str).await;
 
-        let output = Command::new(self.program)
-            .args(spotdl_args)
+        let meta = self.process_save_command(query_str).await;
+
+        match (url, meta) {
+            (Ok(url), Ok(meta)) => {
+                println!("Both query and meta are Ok");
+                println!("query result: {}", url);
+                println!("meta result: {:?}", meta);
+                let out = Output {
+                    artist: Option::from(meta.artist),
+                    album: Option::from(meta.album_name),
+                    channel: None,
+                    duration: Option::from(meta.duration as f64),
+                    filesize: None,
+                    http_headers: None,
+                    release_date: Option::from(meta.date),
+                    thumbnail: Option::from(meta.cover_url),
+                    title: Option::from(meta.name),
+                    track: Option::from(meta.track_number.to_string()),
+                    upload_date: None,
+                    uploader: None,
+                    url: url.clone(),
+                    webpage_url: Some(url.clone()),
+                };
+
+                self.metadata = Some(out.as_aux_metadata());
+
+                Ok(vec![out])
+            }
+            (Err(e), Ok(_)) => {
+                println!("query error: {}", e);
+                Err(AudioStreamError::Fail(Box::new(e)))
+            }
+            (Ok(_), Err(e)) => {
+                println!("meta error: {}", e);
+                Err(AudioStreamError::Fail(Box::new(e)))
+            }
+            (Err(e1), Err(e2)) => {
+                println!("Both query and meta are Err");
+                println!("query error: {}", e1);
+                println!("meta error: {}", e2);
+                Err(AudioStreamError::Fail(Box::new(e1)))
+            }
+        }
+    }
+
+    async fn process_url_command(&self, query_str: &String) -> Result<String, AudioStreamError> {
+        let spotdl_url_args: Vec<&str> = match &self.credentials {
+            Some(credentials) => vec![
+                SPOTIFY_DL_OPTION_URL,
+                query_str,
+                SPOTIFY_DL_OPTION_SPOTIFY_CLIENT_ID_FLAG,
+                credentials.client_id.as_ref(),
+                SPOTIFY_DL_OPTION_SPOTIFY_CLIENT_SECRET_FLAG,
+                credentials.client_secret.as_ref(),
+            ],
+            None => vec![SPOTIFY_DL_OPTION_URL, query_str],
+        };
+        let url_output = Command::new(self.program)
+            .args(spotdl_url_args)
             .output()
             .await
             .map_err(|e| {
@@ -94,64 +156,85 @@ impl SpotifyDl {
                 } else {
                     Box::new(e)
                 })
-            })?;
+            });
 
-        if !output.status.success() {
-            return Err(AudioStreamError::Fail(
-                format!(
-                    "{} failed with non-zero status code: {}",
-                    self.program,
-                    std::str::from_utf8(&output.stderr[..]).unwrap_or("<no error message>")
-                )
-                .into(),
-            ));
+        match url_output {
+            Ok(output) => {
+                if !output.status.success() {
+                    return Err(AudioStreamError::Fail(
+                        format!(
+                            "{} failed with non-zero status code: {}",
+                            self.program,
+                            std::str::from_utf8(&output.stderr[..]).unwrap_or("<no error message>")
+                        )
+                        .into(),
+                    ));
+                };
+
+                // NOTE: must be split_mut for spotdl result and skip the first two lines which are
+                // [Processing query: <query>] and [url: <url>]
+                // spotdl result is not json format, e.g
+                // # spotdl url "suger for the pill"
+                // Processing query: suger for the pill
+                // https://rr2---sn-cxaaj5o5q5-tt1ek.googlevideo.com/videoplayback?expire=173362572...
+                let url = String::from_utf8(output.stdout)
+                    .map_err(|e| AudioStreamError::Fail(Box::new(e)))?
+                    .trim()
+                    .split('\n')
+                    .last()
+                    .into_iter()
+                    .collect::<String>();
+
+                Ok(url)
+            }
+            Err(e) => Err(AudioStreamError::Fail(Box::new(e))),
         }
+    }
 
-        // NOTE: must be split_mut for spotdl result and skip the first two lines which are
-        // [Processing query: <query>] and [url: <url>]
-        // spotdl result is not json format, e.g
-        // # spotdl url "suger for the pill"
-        // Processing query: suger for the pill
-        // https://rr2---sn-cxaaj5o5q5-tt1ek.googlevideo.com/videoplayback?expire=173362572...
-
-        let url = String::from_utf8(output.stdout)
-            .map_err(|e| AudioStreamError::Fail(Box::new(e)))?
-            .trim()
-            .split('\n')
-            .inspect(|s| {
-                println!("query spotdl search result after split: {}", s);
-            })
-            .last()
-            .inspect(|s| {
-                println!("query spotdl search result after skip: {}", s);
-            })
-            .into_iter()
-            .collect::<String>();
-
-        // println!("query spotdl search result: {}", url);
-
-        let out = Output {
-            artist: None,
-            album: None,
-            channel: None,
-            duration: None,
-            filesize: None,
-            http_headers: None,
-            release_date: None,
-            thumbnail: None,
-            title: None,
-            track: None,
-            upload_date: None,
-            uploader: None,
-            url: url.clone(),
-            webpage_url: Some(url.clone()),
+    async fn process_save_command(&self, query_str: &String) -> Result<Song, AudioStreamError> {
+        let spotdl_save_args: Vec<&str> = match &self.credentials {
+            Some(credentials) => vec![
+                SPOTIFY_DL_OPTION_SAVE,
+                query_str,
+                SPOTIFY_DL_OPTION_SAVE_SAVE_FILE_FLAG,
+                SPOTIFY_DL_FILE_NAME,
+                SPOTIFY_DL_OPTION_SPOTIFY_CLIENT_ID_FLAG,
+                credentials.client_id.as_ref(),
+                SPOTIFY_DL_OPTION_SPOTIFY_CLIENT_SECRET_FLAG,
+                credentials.client_secret.as_ref(),
+            ],
+            None => vec![
+                SPOTIFY_DL_OPTION_SAVE,
+                query_str,
+                SPOTIFY_DL_OPTION_SAVE_SAVE_FILE_FLAG,
+                SPOTIFY_DL_FILE_NAME,
+            ],
         };
 
-        let meta = out.as_aux_metadata();
-
-        self.metadata = Some(meta);
-
-        Ok(vec![out])
+        match Command::new(self.program).args(spotdl_save_args).spawn() {
+            Ok(mut child) => match child.wait().await {
+                    Ok(status) => {
+                        if !status.success() {
+                            return Err(AudioStreamError::Fail(
+                                format!("{} failed with non-zero status code", self.program).into(),
+                            ));
+                        }
+                        // Process completed successfully, handle the result here
+                    match Song::from_file(SPOTIFY_DL_FILE_NAME).await {
+                            Ok(songs) => {
+                            if songs.is_empty() {
+                                    Err(AudioStreamError::Fail("No song found in the file".into()))
+                            } else {
+                                Ok(songs[0].clone())
+                                }
+                            }
+                            Err(e) => Err(AudioStreamError::Fail(e)),
+                        }
+                    }
+                Err(e) => Err(AudioStreamError::Fail(Box::new(e))),
+            },
+            Err(e) => Err(AudioStreamError::Fail(Box::new(e))),
+        }
     }
 }
 
@@ -226,63 +309,14 @@ impl Compose for SpotifyDl {
 
 // #[cfg(test)]
 // mod tests {
-//     use reqwest::Client;
-//
 //     use super::*;
-//     use crate::constants::test_data::*;
-//     use crate::input::input_tests::*;
 //
 //     #[tokio::test]
 //     #[ntest::timeout(20_000)]
 //     async fn ytdl_track_plays() {
+//         let songs = Song::from_file(SPOTIFY_DL_FILE_NAME).expect("spotdl save result is not json");
+//
 //         track_plays_mixed(|| SpotifyDl::new(Client::new(), YTDL_TARGET.into())).await;
 //     }
 //
-//     #[tokio::test]
-//     #[ntest::timeout(20_000)]
-//     async fn ytdl_page_with_playlist_plays() {
-//         track_plays_passthrough(|| SpotifyDl::new(Client::new(), YTDL_PLAYLIST_TARGET.into()))
-//             .await;
-//     }
-//
-//     #[tokio::test]
-//     #[ntest::timeout(20_000)]
-//     async fn ytdl_forward_seek_correct() {
-//         forward_seek_correct(|| SpotifyDl::new(Client::new(), YTDL_TARGET.into())).await;
-//     }
-//
-//     #[tokio::test]
-//     #[ntest::timeout(20_000)]
-//     async fn ytdl_backward_seek_correct() {
-//         backward_seek_correct(|| SpotifyDl::new(Client::new(), YTDL_TARGET.into())).await;
-//     }
-//
-//     #[tokio::test]
-//     #[ntest::timeout(20_000)]
-//     async fn fake_exe_errors() {
-//         let mut ytdl = SpotifyDl::new_spotdl_like("yt-dlq", Client::new(), YTDL_TARGET.into());
-//
-//         assert!(ytdl.aux_metadata().await.is_err());
-//     }
-//
-//     #[tokio::test]
-//     #[ntest::timeout(20_000)]
-//     async fn ytdl_search_plays() {
-//         let mut ytdl = SpotifyDl::new_search(Client::new(), "cloudkicker 94 days".into());
-//         let res = ytdl.search(Some(1)).await;
-//
-//         let res = res.unwrap();
-//         assert_eq!(res.len(), 1);
-//
-//         track_plays_passthrough(move || ytdl).await;
-//     }
-//
-//     #[tokio::test]
-//     #[ntest::timeout(20_000)]
-//     async fn ytdl_search_3() {
-//         let mut ytdl = SpotifyDl::new_search(Client::new(), "test".into());
-//         let res = ytdl.search(Some(3)).await;
-//
-//         assert_eq!(res.unwrap().len(), 3);
-//     }
 // }

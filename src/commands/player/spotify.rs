@@ -2,6 +2,9 @@ use crate::{
     input::sources::spotdl::{SpotifyCredential, SpotifyDl},
     Context, Error, HttpKey,
 };
+use poise::serenity_prelude::CreateEmbed;
+use poise::CreateReply;
+use songbird::input::Compose;
 
 use super::join::handle_join;
 
@@ -47,14 +50,25 @@ async fn handle_play_spotify(
         Some(handler_lock) => {
             let mut handler = handler_lock.lock().await;
 
-            let src = SpotifyDl::new(
+            let mut src = SpotifyDl::new(
                 http_client,
-                url,
+                url.clone(),
                 Some(SpotifyCredential {
                     client_id: ctx.data().app_config.spotify_client_id.clone(),
                     client_secret: ctx.data().app_config.spotify_client_secret.clone(),
                 }),
             );
+
+            let meta = src.aux_metadata().await?;
+            let embed = CreateEmbed::new()
+                .title(meta.title.unwrap_or("Unknown".to_string()))
+                .description("Currently playing")
+                .description(meta.artist.unwrap_or("Unknown".to_string()))
+                .description(meta.album.unwrap_or("Unknown".to_string()))
+                .url(url)
+                .image(meta.thumbnail.unwrap_or("".to_string()));
+
+            let reply = CreateReply::default().embed(embed).ephemeral(false);
 
             handler.enqueue_input(src.into()).await;
 
@@ -62,7 +76,7 @@ async fn handle_play_spotify(
             println!("current queue length {}", q_len);
 
             // handle metadata for spotify adaptor
-            ctx.reply("Playing song").await?;
+            ctx.send(reply).await?;
         }
         _ => {
             ctx.reply("Not in a voice channel to play in, joining...")
